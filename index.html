@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DoIT! - Умный планировщик задач</title>
-    <!-- VKUI Styles через CDN -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@vkontakte/vkui@5.0.0/dist/vkui.css">
     <style>
         :root {
@@ -304,10 +303,25 @@
         .time-inputs .form-group {
             flex: 1;
         }
+
+        .vk-warning {
+            display: none;
+            background: #fff4d9;
+            border: 1px solid #ffdca0;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 10px;
+            text-align: center;
+            color: #7a6c2f;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="vk-warning" id="vk-warning">
+            💡 Приложение запущено вне VK. Некоторые функции могут быть ограничены.
+        </div>
+        
         <div class="header">
             <h1 class="app-title">DoIT!</h1>
             <div class="quote" id="quote">Загрузка цитаты...</div>
@@ -387,11 +401,23 @@
     </div>
 
     <script>
-        // Инициализация VK Bridge
-        if (typeof vkBridge !== 'undefined') {
-            vkBridge.send('VKWebAppInit', {});
+        // Безопасная инициализация VK Bridge
+        function initializeVKBridge() {
+            if (typeof vkBridge !== 'undefined') {
+                try {
+                    vkBridge.send('VKWebAppInit', {});
+                    console.log('VK Bridge инициализирован');
+                    document.getElementById('vk-warning').style.display = 'none';
+                } catch (error) {
+                    console.log('Приложение запущено вне VK, но работает в standalone режиме');
+                    document.getElementById('vk-warning').style.display = 'block';
+                }
+            } else {
+                console.log('VK Bridge не доступен, работаем в standalone режиме');
+                document.getElementById('vk-warning').style.display = 'block';
+            }
         }
-        
+
         // Цитаты для планирования времени
         const quotes = [
             "Время — самый ценный ресурс. Распоряжайся им мудро.",
@@ -408,10 +434,6 @@
             const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
             document.getElementById('quote').textContent = randomQuote;
         }
-        
-        // Обновляем цитату каждые 30 секунд
-        updateQuote();
-        setInterval(updateQuote, 30000);
         
         // Работа с задачами
         let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
@@ -469,15 +491,12 @@
                     if (timerElement && progressElement && taskElement) {
                         const colorClass = getTimeColor(remaining, totalTime);
                         
-                        // Обновляем текст таймера
                         timerElement.textContent = formatTime(remaining);
                         timerElement.className = `timer ${colorClass}`;
                         
-                        // Обновляем текст прогресса
                         const percentage = Math.max(0, (remaining / totalTime) * 100);
                         progressElement.textContent = `${Math.round(percentage)}% осталось`;
                         
-                        // Обновляем цвет задачи
                         taskElement.className = `task-item ${colorClass}`;
                     }
                 }
@@ -534,7 +553,6 @@
                 tasksContainer.appendChild(taskElement);
             });
             
-            // Запускаем интервал обновления таймеров
             if (timerInterval) clearInterval(timerInterval);
             timerInterval = setInterval(updateTaskTimers, 1000);
         }
@@ -556,7 +574,6 @@
             modalTitle.textContent = 'Редактировать задачу';
             taskTitleInput.value = task.title;
             
-            // Рассчитываем часы и минуты из общего времени
             const totalSeconds = task.totalSeconds;
             const hours = Math.floor(totalSeconds / 3600);
             const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -568,9 +585,11 @@
         
         // Функция удаления задачи
         window.deleteTask = function(index) {
-            tasks.splice(index, 1);
-            localStorage.setItem('tasks', JSON.stringify(tasks));
-            renderTasks();
+            if (confirm('Удалить эту задачу?')) {
+                tasks.splice(index, 1);
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+                renderTasks();
+            }
         };
         
         // Функция сохранения задачи
@@ -616,7 +635,6 @@
             taskModal.style.display = 'none';
         });
         
-        // Закрытие модального окна при клике вне его
         taskModal.addEventListener('click', (e) => {
             if (e.target === taskModal) {
                 taskModal.style.display = 'none';
@@ -624,6 +642,9 @@
         });
         
         // Инициализация приложения
+        initializeVKBridge();
+        updateQuote();
+        setInterval(updateQuote, 30000);
         renderTasks();
     </script>
 </body>
